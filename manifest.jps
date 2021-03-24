@@ -1,45 +1,42 @@
-{
-	"jpsVersion": "0.2",
-	"jpsType": "install",
-	"application": {
-		"id": "nexus",
-		"name": "Nexus Repository Manager",
-		"version": "2.12.0-01",
-		"logo": "https://raw.githubusercontent.com/jelastic-jps/nexus/master/images/Nexus.png",
-		"type": "java",
-		"homepage": "http://www.sonatype.org/",
-		"categories": ["apps/dev-tools", "apps/dev-and-admin-tools"],
-		"description": {
-			"en": "Nexus sets the standard for repository management providing development teams with the ability to proxy remote repositories and share software artifacts."
-		},
-		"env": {
-			"topology": {
-				"ha": false,
-				"engine": "java7",
-				"ssl": false,
-				"nodes": [{
-						"extip": false,
-						"count": 1,
-						"cloudlets": 8,
-						"nodeType": "tomcat7"
-					}
-				]
-			},
-			"deployments": [{
-					"archive": "https://raw.githubusercontent.com/jelastic-jps/nexus/master/dumps/nexus-2.12.0-01.war",
-					"name": "nexus-2.12.0-01.war",
-					"context": "ROOT"
-				}
-			],
-			"configs": [{
-					"nodeType": "tomcat7",
-					"restart": true
-				}
-			]
-		},
-		"success": {
-			"text": "Below you will find your admin panel link, username and password.</br></br> <table style='font-size:13px; border: none;'><tr><td>Admin panel URL:</td><td style='padding-left: 10px;'><a href='${env.protocol}://${env.domain}/' target='_blank'>${env.protocol}://${env.domain}/</a></td></tr>  <tr><td>Admin name:</td><td style='padding-left: 10px;'>admin</td></tr><tr><td>Password:</td><td style='padding-left: 10px;'>admin123</td></tr></table></br>To add custom domain name for your Nexus Repository Manager installation follow the steps described in our <a href='http://docs.jelastic.com/custom-domains' target='_blank'>documentation</a>",
-			"email": "Below you will find your admin panel link, username and password.</br></br> <table style='font-size:13px; border: none;'><tr><td>Admin panel URL:</td><td style='padding-left: 10px;'><a href='${env.protocol}://${env.domain}/' target='_blank'>${env.protocol}://${env.domain}/</a></td></tr>  <tr><td>Admin name:</td><td style='padding-left: 10px;'>admin</td></tr><tr><td>Password:</td><td style='padding-left: 10px;'>admin123</td></tr></table></br>To add custom domain name for your Nexus Repository Manager installation follow the steps described in our <a href='http://docs.jelastic.com/custom-domains' target='_blank'>documentation</a>"
-		}
-	}
-}
+type: install
+version: 0.2
+id: nexus
+name: Nexus Repository Manager
+logo: https://raw.githubusercontent.com/jelastic-jps/nexus/master/images/Nexus.png
+homepage: http://www.sonatype.org/
+categories:
+- apps/dev-tools
+- apps/dev-and-admin-tools
+description: Nexus sets the standard for repository management providing development teams with the ability to proxy remote repositories and share software artifacts.      
+
+globals:
+  APP_PATH: /home/jelastic/APP/
+
+engine: java8
+nodes:
+- extip: false
+  cloudlets: 20
+  nodeType: javaengine
+  
+onInstall:
+  - cmd[cp]: |-
+      cd ${globals.APP_PATH} && pkill -f "/usr/java/jdk"
+      curl -fsSL "https://download.sonatype.com/nexus/3/nexus-3.30.0-01-unix.tar.gz" -o archive.tar.gz
+      tar -xzvf archive.tar.gz >> ../unpack.log
+      sed -i 's|application-port=8081|application-port=8080|g' nexus-3.30.0-01/etc/nexus-default.properties
+  - cmd[cp]: |-
+      ln -s ${globals.APP_PATH}nexus-3.30.0-01/bin/nexus /etc/init.d/nexus
+    user: root
+  - cmd[cp]:
+      /etc/init.d/nexus start
+  - cmd[cp]: |-
+      while [ ! -f ${globals.APP_PATH}sonatype-work/nexus3/admin.password ]; do sleep 2; done;
+      cat ${globals.APP_PATH}sonatype-work/nexus3/admin.password
+  - setGlobals:
+      password: ${response.out}
+success: |
+  Below you will find your admin panel link, username and password.    
+  Admin panel URL: [${env.protocol}://${env.domain}/](${env.protocol}://${env.domain}/)  
+  Admin name: admin  
+  Password: ${globals.password}       
+  To add custom domain name for your Nexus Repository Manager installation follow the steps described in our [http://docs.jelastic.com/custom-domains](documentation)
